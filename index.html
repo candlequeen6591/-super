@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>わくわく！マネータイプ診断！</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* デザイン設定 (省略: 変更なし) */
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif;
+            background-color: #FFF8E1; 
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            user-select: none;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border: 4px solid #004D40; 
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: height 0.3s;
+        }
+        h1 {
+            color: #004D40; 
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #start-screen { display: block; }
+        .start-lead {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFC107;
+            margin-bottom: 30px;
+        }
+        .start-desc {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        .start-btn-large {
+            background-color: #FFC107; 
+            color: #004D40; 
+            border: none;
+            border-radius: 50px;
+            padding: 20px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 6px #FF8F00; 
+            width: 80%;
+            margin: 0 auto;
+            display: block;
+            animation: pulse 2s infinite;
+        }
+        .start-btn-large:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px #FF8F00;
+        }
+
+        #quiz-area, #result-area { display: none; }
+        .privacy-note {
+            font-size: 13px;
+            color: #1A795A;
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            line-height: 1.5;
+            text-align: left;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #FFC107;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .question-box {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            min-height: 60px;
+            padding: 10px;
+            background-color: #E8F5E9; 
+            border-radius: 10px;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        button.option-btn {
+            background-color: #FFC107; 
+            color: #333; 
+            border: none;
+            border-radius: 50px;
+            padding: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 4px #FF8F00; 
+            text-align: left;
+            padding-left: 25px;
+            font-weight: bold;
+        }
+        button.option-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 #FF8F00;
+        }
+        button.option-btn:hover {
+            background-color: #FFB300;
+        }
+        button.neutral-btn {
+            background-color: #bdbdbd;
+            box-shadow: 0 4px #757575;
+            color: white; 
+        }
+        button.neutral-btn:hover {
+            background-color: #a0a0a0;
+        }
+
+        /* ⏪ 戻るボタンのスタイル追加 */
+        #back-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            margin-bottom: -5px;
+            transition: background-color 0.2s;
+            display: none; /* 初期は非表示 */
+        }
+        #back-button:hover {
+            background-color: #45a049;
+        }
+        
+        /* 結果画面 */
+        .animal-icon {
+            font-size: 100px;
+            display: block;
+            margin: 10px 0;
+            animation: pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .type-title {
+            font-size: 28px;
+            color: #004D40; 
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .catchphrase {
+            font-weight: bold;
+            color: #FFC107; 
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .chart-container {
+            position: relative;
+            margin: 20px auto;
+            height: 300px;
+            width: 100%;
+        }
+        .desc {
+            text-align: left;
+            background: #FFFDE7; 
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            line-height: 1.8;
+            border: 2px dashed #FFC107; 
+        }
+        .download-btn {
+            background-color: #004D40;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px #00332B;
+            width: 80%;
+            margin: 15px auto 0;
+            display: block;
+            transition: transform 0.1s;
+        }
+        .download-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 #00332B;
+        }
+        .share-area {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .share-btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            display: inline-block;
+            text-align: center;
+        }
+        .share-twitter { background-color: #1DA1F2; }
+        .share-line { background-color: #06C755; }
+        .restart-btn {
+            background-color: #1976D2; 
+            box-shadow: 0 4px #0D47A1;
+            margin-top: 30px;
+            text-align: center;
+            border-radius: 10px;
+            color: white;
+            width: 100%;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        #growth-message {
+            background-color: #E3F2FD;
+            color: #0D47A1;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #BBDEFB;
+        }
+        @keyframes pop {
+            0% {transform: scale(0);}
+            100% {transform: scale(1);}
+        }
+        @keyframes pulse {
+            0% {transform: scale(1);}
+            50% {transform: scale(1.05);}
+            100% {transform: scale(1);}
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="start-screen">
+        <h1>💎 わくわく！マネータイプ診断！ 💎</h1>
+        <p class="start-lead">キミのお金の使い方、どの動物タイプ？</p>
+        <div class="start-desc">
+            <p id="loading-message">
+                **データ準備中...**<br>
+                Googleスプレッドシートから最新の質問を読み込んでいます。少々お待ちください。
+            </p>
+        </div>
+        <button class="start-btn-large" id="start-button" onclick="startGame()" disabled>診断をスタート！</button>
+    </div>
+
+    <div id="quiz-area">
+        <p class="privacy-note">
+            ※回答は本人以外知ることができない仕組みです。本音で回答してね。
+        </p>
+        <p>しつもん <span id="q-number">1</span> / <span id="q-total">16</span></p>
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="quiz-content" class="fade-in">
+            <div class="question-box" id="question-text">ここに質問が出ます</div>
+            <div class="options" id="options-container"></div>
+        </div>
+        <button id="back-button" onclick="goBack()">⏪ 一つ前に戻る</button>
+    </div>
+
+    <div id="result-area" class="result-area">
+        <div id="growth-message"></div>
+        <div id="result-content-container">
+            <h1>診断結果！</h1>
+            <div id="result-content"></div>
+            
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+
+            <div id="result-desc"></div>
+        </div>
+
+        <button onclick="downloadResultImage()" class="download-btn">結果画像をダウンロード 📸</button>
+
+        <div class="share-area">
+            <a href="#" id="share-twitter" class="share-btn share-twitter" target="_blank">Xでシェア</a>
+            <a href="#" id="share-line" class="share-btn share-line" target="_blank">LINEでシェア</a>
+        </div>
+
+        <button class="restart-btn" onclick="location.reload()">もう一回やる！</button>
+    </div>
+</div>
+
+<script>
+    // ★★★ あなたのApps ScriptとスプレッドシートのURLを設定してください！ ★★★
+    // 診断結果をスプレッドシートに送信するApps Scriptの公開URL
+    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycby8QPZgLdLGcklU0IIYqJ50t4dpo-N_nk0BaQToPEVLql9al3IkLG-mwq75pLn2M-kV/exec"; 
+    // Q&Aデータを含むCSVの公開URL (ファイル > 共有 > ウェブに公開 > questionsシート > CSV)
+    const QUESTIONS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS9pj-nSE8qg0GTy-VDTdvpDrIJuE6OiJbnE0cOyPtHoV5W98am4V3vKES6H9rlTBfaRxWcUsLuI1VE/pub?gid=0&single=true&output=csv"; 
+    // 結果データを含むCSVの公開URL (ファイル > 共有 > ウェブに公開 > resultsシート > CSV)
+    const RESULTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS9pj-nSE8qg0GTy-VDTdvpDrIJuE6OiJbnE0cOyPtHoV5W98am4V3vKES6H9rlTBfaRxWcUsLuI1VE/pub?gid=1023134718&single=true&output=csv";
+
+    // --- グローバル変数 ---
+    let audioCtx;
+    let questions = []; // スプレッドシートから読み込まれる質問データ
+    let results = {};   // スプレッドシートから読み込まれる結果データ
+    let currentQuestionIndex = 0;
+    let scores = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0, N: 0 };
+    let scoreHistory = []; // ⏪ 戻る機能用: スコアの履歴を保持
+
+    // --- データ読み込み（CMS Lite）---
+    async function loadData() {
+        document.getElementById('start-button').disabled = true;
+
+        if (QUESTIONS_CSV_URL === "YOUR_QUESTIONS_CSV_URL" || RESULTS_CSV_URL === "YOUR_RESULTS_CSV_URL") {
+            document.getElementById('loading-message').innerHTML = '⚠️ **URLを設定してください！**<br>`QUESTIONS_CSV_URL` と `RESULTS_CSV_URL` を上書きしないと動作しません。';
+            return;
+        }
+
+        try {
+            // 質問データの読み込み
+            const qResponse = await fetch(QUESTIONS_CSV_URL);
+            const qCsvText = await qResponse.text();
+            questions = parseQuestionsCSV(qCsvText);
+            
+            // 結果データの読み込み
+            const rResponse = await fetch(RESULTS_CSV_URL);
+            const rCsvText = await rResponse.text();
+            results = parseResultsCSV(rCsvText);
+
+            if (questions.length === 0 || Object.keys(results).length === 0) {
+                 throw new Error("CSVデータが空か、フォーマットが不正です。");
+            }
+            
+            document.getElementById('loading-message').innerHTML = 'データ準備完了！キミのマネータイプを診断しよう！';
+            document.getElementById('q-total').innerText = questions.length;
+            document.getElementById('start-button').disabled = false;
+
+        } catch (error) {
+            console.error("データ読み込みエラー:", error);
+            document.getElementById('loading-message').innerHTML = `エラー発生：データの読み込みに失敗しました。<br>公開URLとCSVの形式を確認してください。(${error.message})`;
+        }
+    }
+
+    // CSV解析ヘルパー関数
+    function parseQuestionsCSV(csvText) {
+        const rows = csvText.split('\n').filter(row => row.trim() !== '');
+        if (rows.length < 2) return [];
+
+        const data = [];
+        const header = rows[0].split(',').map(h => h.trim());
+        const optionColumns = header.filter(h => h.startsWith('opt'));
+        
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].split(',').map(c => c.trim());
+            if (cells.length === 0) continue;
+
+            const q = { text: cells[header.indexOf('text')], options: [] };
+            
+            optionColumns.forEach((colName, index) => {
+                const cellValue = cells[header.indexOf(colName)];
+                if (cellValue) {
+                    const match = cellValue.match(/(.*)\((.)\)/);
+                    if (match) {
+                        q.options.push({ text: match[1], type: match[2] });
+                    }
+                }
+            });
+            // 最後に「どちらでもない」オプションを追加
+            q.options.push({ text: "どれもあまり当てはまらない", type: "N" });
+            data.push(q);
+        }
+        return data;
+    }
+
+    function parseResultsCSV(csvText) {
+        const rows = csvText.split('\n').filter(row => row.trim() !== '');
+        if (rows.length < 2) return {};
+
+        const resultObj = {};
+        const header = rows[0].split(',').map(h => h.trim());
+
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].split(',').map(c => c.trim());
+            if (cells.length === 0) continue;
+
+            const type = cells[header.indexOf('type')];
+            if (type) {
+                resultObj[type] = {
+                    animal: cells[header.indexOf('animal')],
+                    title: cells[header.indexOf('title')],
+                    catch: cells[header.indexOf('catch')],
+                    desc: cells[header.indexOf('desc')]
+                };
+            }
+        }
+        return resultObj;
+    }
+
+
+    // --- 音声生成システム (Web Audio API) --- (省略: 変更なし)
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+    function playTone(freq, type, duration, delay = 0) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+        
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+    }
+    function playCoinSound() {
+        initAudio();
+        playTone(987, 'sine', 0.1);
+        playTone(1318, 'sine', 0.4, 0.05);
+    }
+    function playClickSound() {
+        initAudio();
+        playTone(800, 'triangle', 0.1); 
+    }
+    function playFanfare() {
+        initAudio();
+        playTone(523.25, 'triangle', 0.3, 0);    
+        playTone(659.25, 'triangle', 0.3, 0.15); 
+        playTone(783.99, 'triangle', 0.3, 0.30); 
+        playTone(1046.50, 'triangle', 0.8, 0.45);
+    }
+
+    // --- 診断ロジック ---
+
+    function startGame() {
+        initAudio(); 
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('quiz-area').style.display = 'block';
+
+        playCoinSound(); 
+        showQuestion(); 
+    }
+
+    function showQuestion() {
+        // 最初の質問以外で「戻る」ボタンを表示
+        document.getElementById('back-button').style.display = currentQuestionIndex > 0 ? 'block' : 'none';
+
+        playClickSound(); 
+        const quizContent = document.getElementById('quiz-content');
+        
+        quizContent.classList.remove('fade-in');
+        void quizContent.offsetWidth; 
+        quizContent.classList.add('fade-in');
+
+        const q = questions[currentQuestionIndex];
+        document.getElementById('question-text').innerText = q.text;
+        document.getElementById('q-number').innerText = currentQuestionIndex + 1;
+        
+        const progress = ((currentQuestionIndex) / questions.length) * 100;
+        document.getElementById('progress-bar').style.width = progress + "%";
+
+        const optionsDiv = document.getElementById('options-container');
+        optionsDiv.innerHTML = "";
+
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.innerText = opt.text;
+            btn.className = 'option-btn ' + (opt.type === "N" ? 'neutral-btn' : ''); 
+            btn.onclick = () => selectOption(opt.type);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function selectOption(type) {
+        // ⏪ 戻る機能用: 現在のスコアを履歴に保存
+        scoreHistory.push(JSON.parse(JSON.stringify(scores)));
+
+        if (type !== "N") {
+            scores[type]++;
+        } else {
+            scores.N++;
+        }
+        
+        currentQuestionIndex++;
+
+        if (currentQuestionIndex < questions.length) {
+            showQuestion();
+        } else {
+            document.getElementById('progress-bar').style.width = "100%";
+            showResult();
+        }
+    }
+
+    // ⏪ 前の質問に戻る機能
+    function goBack() {
+        if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            
+            // 履歴から一つ前のスコア状態を復元
+            scores = scoreHistory.pop(); 
+            
+            showQuestion();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+
+        playFanfare(); 
+        if (typeof confetti === 'function') { 
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        // --- 結果判定ロジック ---
+        const personalityScores = { A: scores.A, B: scores.B, C: scores.C, D: scores.D, E: scores.E, F: scores.F, G: scores.G, H: scores.H };
+        let maxType = "A";
+        let maxScore = 0;
+
+        for (const type in personalityScores) {
+            if (personalityScores[type] > maxScore) {
+                maxScore = personalityScores[type];
+                maxType = type;
+            }
+        }
+        
+        if (scores.N > maxScore || maxScore < 2) {
+            maxType = "N";
+        }
+
+        const resultData = results[maxType];
+        if (!resultData) {
+             document.getElementById('result-content-container').innerHTML = '<h2>エラー: 結果データが見つかりません。resultsシートのタイプを確認してください。</h2>';
+             return;
+        }
+
+        // --- Local Storageから過去のスコアを取得 ---
+        const previousScoresString = localStorage.getItem('moneyQuizScores');
+        let previousScores = null;
+        let growthMessage = '';
+        
+        if (previousScoresString) {
+            previousScores = JSON.parse(previousScoresString);
+            growthMessage = generateGrowthMessage(previousScores, personalityScores);
+        }
+        
+        // --- 今回のスコアをLocal Storageに保存 ---
+        localStorage.setItem('moneyQuizScores', JSON.stringify(personalityScores));
+
+        // --- 画面への反映 ---
+        document.getElementById('growth-message').innerHTML = growthMessage;
+
+        sendResultToDatabase(maxType, maxScore);
+
+        const content = `
+            <span class="animal-icon">${resultData.animal}</span>
+            <div class="type-title">${resultData.title}</div>
+            <div class="catchphrase">${resultData.catch}</div>
+        `;
+        document.getElementById('result-content').innerHTML = content;
+        document.getElementById('result-desc').innerHTML = `<div class="desc">${resultData.desc}</div>`;
+
+        const shareText = `私のマネータイプは…【${resultData.title}】でした！%0a${resultData.catch}%0a%0a#マネー診断`;
+        const shareUrl = window.location.href;
+        
+        document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
+        document.getElementById('share-line').href = `https://social-plugins.line.me/lineit/share?url=${shareUrl}`;
+
+        drawChart(previousScores, personalityScores); 
+    }
+
+    // --- Local Storage 成長メッセージ生成関数 --- (省略: 変更なし)
+    function generateGrowthMessage(prev, current) {
+        const calcAxis = (s) => ({
+            protect: s.A + s.G + s.C,
+            use: s.B + s.F,
+            increase: s.E + s.H,
+            share: s.D * 2 
+        });
+
+        const prevAxis = calcAxis(prev);
+        const currentAxis = calcAxis(current);
+
+        const axisNames = { protect: '貯金・計画性', use: '消費・直感性', increase: '投資・稼ぐ力', share: '共感・利他性' };
+        let improvement = [];
+        let regression = [];
+
+        for (const key in prevAxis) {
+            const diff = currentAxis[key] - prevAxis[key];
+            if (diff > 1) { 
+                improvement.push(axisNames[key]);
+            } else if (diff < -1) { 
+                regression.push(axisNames[key]);
+            }
+        }
+        
+        let message = 'おかえり！前回の診断結果と比較するよ。';
+
+        if (improvement.length > 0) {
+            message += `<br>✨ **キミは [${improvement.join(', ')}] が大きく成長したね！** マネー意識が変わった証拠だよ。`;
+        }
+        if (regression.length > 0) {
+            message += `<br>⚠️ ただし、[${regression.join(', ')}] の意識が少し下がっているかも。バランスを意識してみてね。`;
+        }
+        if (improvement.length === 0 && regression.length === 0) {
+             message += `<br>👍 **素晴らしい！前回の軸をしっかりキープしているよ。**`;
+        }
+        
+        return message;
+    }
+
+
+    // --- データ集計機能 (Google Apps Script連携) --- (省略: 変更なし)
+    function sendResultToDatabase(resultType, maxScore) {
+        if (GOOGLE_APP_URL === "https://docs.google.com/spreadsheets/d/1InK2EwHTmHCns3bMr4d53tVPYeelNSne_Y_59L_M4VU/edit?usp=sharing") {
+            console.error("Apps Script URLが設定されていません。集計データは送信されませんでした。");
+            return;
+        }
+
+        const data = {
+            type: resultType,
+            score: maxScore,
+            url: window.location.href
+        };
+
+        fetch(GOOGLE_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(data)
+        })
+        .then(response => {
+            console.log("Result data sent successfully.");
+        })
+        .catch(error => {
+            console.error('Error sending data:', error);
+        });
+    }
+
+    // --- 画像ダウンロード機能 (html2canvas) --- (省略: 変更なし)
+    function downloadResultImage() {
+        const target = document.getElementById('result-content-container');
+        
+        if (typeof html2canvas === 'undefined') {
+            alert('画像生成ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+            return;
+        }
+
+        setTimeout(() => {
+            html2canvas(target, {
+                windowWidth: target.scrollWidth,
+                windowHeight: target.scrollHeight,
+                useCORS: true,
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'マネー診断結果.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }, 500);
+    }
+    
+    // --- チャート描画関数 --- (省略: 変更なし)
+    function drawChart(previousScores, currentScores) {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        
+        const protect = currentScores.A + currentScores.G + currentScores.C;
+        const use = currentScores.B + currentScores.F;
+        const increase = currentScores.E + currentScores.H;
+        const share = currentScores.D * 2;
+        
+        let datasets = [{
+            label: '今回のマネーバランス',
+            data: [protect, use, increase, share],
+            backgroundColor: 'rgba(255, 193, 7, 0.4)',
+            borderColor: '#FFC107',
+            borderWidth: 2,
+            pointBackgroundColor: '#004D40',
+            pointRadius: 5
+        }];
+        
+        if (previousScores) {
+            const prevProtect = previousScores.A + previousScores.G + previousScores.C;
+            const prevUse = previousScores.B + previousScores.F;
+            const prevIncrease = previousScores.E + previousScores.H;
+            const prevShare = previousScores.D * 2;
+            
+            datasets.unshift({ 
+                label: '前回のマネーバランス',
+                data: [prevProtect, prevUse, prevIncrease, prevShare],
+                backgroundColor: 'rgba(0, 77, 64, 0.2)', 
+                borderColor: '#004D40', 
+                borderWidth: 1,
+                pointBackgroundColor: '#004D40',
+                pointRadius: 3,
+                borderDash: [5, 5] 
+            });
+        }
+
+        if (window.myRadarChart) {
+            window.myRadarChart.destroy();
+        }
+
+        window.myRadarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['守る・計画', '使う・直感', '増やす・経験', '分ける・共感'],
+                datasets: datasets
+            },
+            options: {
+                scale: {
+                    r: {
+                        beginAtZero: true,
+                        suggestedMax: 8,
+                        grid: { color: '#ccc' },
+                        pointLabels: {
+                            font: { size: 14, weight: 'bold' },
+                            color: '#004D40'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: true } 
+                }
+            }
+        });
+    }
+
+    // ページ読み込み時にデータロードを開始
+    window.onload = loadData;
+</script>
+</body>
+</html>
